@@ -1,0 +1,9 @@
+{
+  "name": "schema-router",
+  "version": "1.0.1",
+  "description": "A schema based router ideal for front end single page applications",
+  "main": "router.js",
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
+}
