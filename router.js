@@ -42,15 +42,15 @@ export class Router extends EventTarget {
 	navigate(path, replace) {
 		let newUrl = new URL(path, window.location.href);
 		const pageObject = this.resolve(newUrl.href);
-		if(pageObject.redirect) {
-			const redirectUrl = new URL(pageObject.redirect, window.location.origin)
+		if(pageObject.redirected) {
+			const redirectUrl = new URL(pageObject.redirected, window.location.origin)
 			if(newUrl.href === location.href && newUrl.href !== redirectUrl.href) {
 				replace = true;
 			}
 			newUrl = redirectUrl;
 		}
 
-		if(location.href !== newUrl.href || pageObject.redirect) {
+		if(location.href !== newUrl.href || pageObject.redirected) {
 			if(replace) {
 				window.history.replaceState({}, pageObject.title || '', newUrl.href);
 			} else {
@@ -122,7 +122,6 @@ export class Router extends EventTarget {
 
 		const findPageObject = (schemaPages, depth = 0, baseParams = {}) => {
 
-			console.log(schemaPages,depth);
 			for(const schemaPath in schemaPages) {
 				const schemaPathParts = schemaPath.split('/').filter(str => str.length>0);
 				let matching = true;
@@ -178,7 +177,7 @@ export class Router extends EventTarget {
 
 		if(pathParts.length < 1) {
 			if('root' in this._schema) {
-				pageObject = this._resolvePageObject(this._schema.root);
+				pageObject = this._resolvePageObject({...this._schema.root, params: {}, route: '/'});
 			}
 		} else {
 			if('pages' in this._schema) {
@@ -190,7 +189,7 @@ export class Router extends EventTarget {
 
 		if(!pageObject) {
 			if('404' in this._schema) {
-				pageObject = this._resolvePageObject(this._schema['404']);				
+				pageObject = this._resolvePageObject({...this._schema['404'],params: {}});				
 			} else {
 				throw new Error('routeSchema must have a 404 route');
 			}
@@ -207,11 +206,12 @@ export class Router extends EventTarget {
 	}
 
 	resolveId(id) {
-		const findPageById = (pages) => {
-			for(let page of Object.values(pages)) {
-				if(page.id === id) return this._resolvePageObject({...page, params: {}});
+		const findPageById = (pages, basePath = '') => {
+			for(let [route, page] of Object.entries(pages)) {
+				const currentPath = basePath + route.split('/').filter(s=>s.length>0).join('/');
+				if(page.id === id) return this._resolvePageObject({...page, params: {}, route: currentPath});
 				if('subPages' in page) {
-					const page = findPageById(page.subPages);
+					const page = findPageById(page.subPages, currentPath);
 					if(page) return page;	
 				}
 			}
@@ -228,11 +228,12 @@ export class Router extends EventTarget {
 	}
 
 	resolveAll() {
-		const resolvePages = (pages) => {
+		const resolvePages = (pages, basePath = '') => {
 			const resolvedPages = [];
-			for(let page of Object.values(pages)) {
-				if('subPages' in page) resolvedPages.push(...resolvePages(page.subPages));
-				resolvedPages.push(this._resolvePageObject({...page, params: {}}));
+			for(let [route, page] of Object.entries(pages)) {
+				const currentPath = basePath + `/${route.split('/').filter(s=>s.length>0).join('/')}`;
+				resolvedPages.push(this._resolvePageObject({...page, params: {}, route: currentPath}));
+				if('subPages' in page) resolvedPages.push(...resolvePages(page.subPages, currentPath));
 			}
 			return resolvedPages;
 		}
@@ -245,7 +246,7 @@ export class Router extends EventTarget {
 			throw new Error('routeSchema must have a pages property');
 		}
 
-		if('root' in this._schema) resolvedPages.push(this._resolvePageObject({...this._schema.root, params: {}}));
+		if('root' in this._schema) resolvedPages.push(this._resolvePageObject({...this._schema.root, params: {}, route: '/'}));
 		if('404' in this._schema) resolvedPages.push(this._resolvePageObject({...this._schema['404'], params: {}}));
 
 		return resolvedPages.filter(page => !page.redirect);
