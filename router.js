@@ -36,10 +36,10 @@ export class Router extends EventTarget {
 			e.preventDefault();
 			if (href !== location.href) this.navigate(href);
 		});
+		this.navigate(window.location.href);
 	}
 
 	navigate(path, replace) {
-		console.log('aaaa');
 		const newUrl = new URL(path, location.href);
 		const pageObject = this.resolve(newUrl.href);
 		if(location.href !== newUrl.href) {
@@ -49,6 +49,7 @@ export class Router extends EventTarget {
 				window.history.pushState({}, pageObject.title || '', newUrl.href);
 			}	
 		}
+		this._activePage = pageObject;
 		this.dispatchEvent(new PageChangeEvent(pageObject));
 	}
 
@@ -205,6 +206,10 @@ export class Router extends EventTarget {
 		if(this._schema['404'] && this._schema['404'].id === id) return this._resolvePageObject({...this._schema['404'], params: {}});
 
 		return findPageById(this._schema.pages);
+	}
+
+	get activePage () {
+		return this._activePage;
 	}
 }
 
