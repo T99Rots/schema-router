@@ -40,9 +40,17 @@ export class Router extends EventTarget {
 	}
 
 	navigate(path, replace) {
-		const newUrl = new URL(path, location.href);
+		let newUrl = new URL(path, window.location.href);
 		const pageObject = this.resolve(newUrl.href);
-		if(location.href !== newUrl.href) {
+		if(pageObject.redirect) {
+			const redirectUrl = new URL(pageObject.redirect, window.location.origin)
+			if(newUrl.href === location.href && newUrl.href !== redirectUrl.href) {
+				replace = true;
+			}
+			newUrl = redirectUrl;
+		}
+
+		if(location.href !== newUrl.href || pageObject.redirect) {
 			if(replace) {
 				window.history.replaceState({}, pageObject.title || '', newUrl.href);
 			} else {
@@ -188,6 +196,13 @@ export class Router extends EventTarget {
 			}
 		}
 
+		if(pageObject.redirect) {
+			return {
+				...this.resolve(pageObject.redirect),
+				redirected: pageObject.redirect
+			};
+		}
+
 		return pageObject;
 	}
 
@@ -210,6 +225,30 @@ export class Router extends EventTarget {
 
 	get activePage () {
 		return this._activePage;
+	}
+
+	resolveAll() {
+		const resolvePages = (pages) => {
+			const resolvedPages = [];
+			for(let page of Object.values(pages)) {
+				if('subPages' in page) resolvedPages.push(...resolvePages(page.subPages));
+				resolvedPages.push(this._resolvePageObject({...page, params: {}}));
+			}
+			return resolvedPages;
+		}
+
+		const resolvedPages = [];
+
+		if('pages' in this._schema) {
+			resolvedPages.push(...resolvePages(this._schema.pages));
+		} else {
+			throw new Error('routeSchema must have a pages property');
+		}
+
+		if('root' in this._schema) resolvedPages.push(this._resolvePageObject({...this._schema.root, params: {}}));
+		if('404' in this._schema) resolvedPages.push(this._resolvePageObject({...this._schema['404'], params: {}}));
+
+		return resolvedPages.filter(page => !page.redirect);
 	}
 }
 
