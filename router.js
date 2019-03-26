@@ -40,32 +40,39 @@ export class Router extends EventTarget {
 	}
 
 	navigate(path, replace) {
-		let newUrl = new URL(path, window.location.href);
+		const currentLocation = window.location.href
+		let newUrl = new URL(path, currentLocation);
 		const pageObject = this.resolve(newUrl.href);
+
 		if(pageObject.redirected) {
-			const redirectUrl = new URL(pageObject.redirected, window.location.origin)
-			if(newUrl.href === location.href && newUrl.href !== redirectUrl.href) {
-				replace = true;
-			}
-			newUrl = redirectUrl;
+			newUrl = new URL(pageObject.redirect.target, window.location.origin);
 		}
 
-		if(location.href !== newUrl.href || pageObject.redirected) {
+		if(currentLocation !== newUrl.href) {
 			if(replace) {
 				window.history.replaceState({}, pageObject.title || '', newUrl.href);
 			} else {
 				window.history.pushState({}, pageObject.title || '', newUrl.href);
 			}	
 		}
+		
 		this._activePage = pageObject;
-		this.dispatchEvent(new PageChangeEvent(pageObject));
+		if(currentLocation !== newUrl.href) this.dispatchEvent(new PageChangeEvent(pageObject));
 	}
 
 	_resolvePageObject(pageObject) {
 		const resolvedObject = {...pageObject};
-		for(let [property, value] of Object.entries(this._schema.default)) {
-			if (!(property in resolvedObject)) resolvedObject[property] = value;
+		const applyTemplate = (template) => {
+			for(let [property, value] of Object.entries(template)) {
+				if (!(property in resolvedObject)) resolvedObject[property] = value;
+			}
 		}
+		if(typeof pageObject.template == 'string') {
+			if(pageObject.template in this._schema.templates) {
+				applyTemplate(this._schema.templates[pageObject.template])
+			}
+		}
+		applyTemplate(this._schema.default);
 		for(let [property, value] of Object.entries(resolvedObject)) {
 			if(typeof value === 'function') {
 				const resolvedValue = value(pageObject);
@@ -196,9 +203,16 @@ export class Router extends EventTarget {
 		}
 
 		if(pageObject.redirect) {
+			const resolvedPageObject = this.resolve(pageObject.redirect);
 			return {
-				...this.resolve(pageObject.redirect),
-				redirected: pageObject.redirect
+				...resolvedPageObject,
+				redirected: true,
+				redirect: {
+					origin: pageObject.route,
+					originId: pageObject.id,
+					target: pageObject.redirect,
+					targetId: resolvedPageObject.id
+				}
 			};
 		}
 
@@ -233,7 +247,7 @@ export class Router extends EventTarget {
 			for(let [route, page] of Object.entries(pages)) {
 				const currentPath = basePath + `/${route.split('/').filter(s=>s.length>0).join('/')}`;
 				resolvedPages.push(this._resolvePageObject({...page, params: {}, route: currentPath}));
-				if('subPages' in page) resolvedPages.push(...resolvePages(page.subPages, currentPath));
+				if(page.subPages) resolvedPages.push(...resolvePages(page.subPages, currentPath));
 			}
 			return resolvedPages;
 		}
