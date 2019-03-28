@@ -11,7 +11,7 @@ export class Router extends EventTarget {
 		this._schema = routerSchema;
 
 		window.addEventListener('popstate', () => {
-			this.navigate(window.location.href);
+			this.navigate(window.location.href,false,true);
 		})
 
 		document.body.addEventListener('click', e => {
@@ -36,10 +36,10 @@ export class Router extends EventTarget {
 			e.preventDefault();
 			if (href !== location.href) this.navigate(href);
 		});
-		this.navigate(window.location.href);
+		this.navigate(window.location.href, false, true);
 	}
 
-	navigate(path, replace) {
+	navigate(path, replace, force) {
 		const currentLocation = window.location.href
 		let newUrl = new URL(path, currentLocation);
 		const pageObject = this.resolve(newUrl.href);
@@ -53,11 +53,13 @@ export class Router extends EventTarget {
 				window.history.replaceState({}, pageObject.title || '', newUrl.href);
 			} else {
 				window.history.pushState({}, pageObject.title || '', newUrl.href);
-			}	
+			}
 		}
-		
-		this._activePage = pageObject;
-		if(currentLocation !== newUrl.href) this.dispatchEvent(new PageChangeEvent(pageObject));
+
+		if(currentLocation !== newUrl.href || force) {
+			this._activePage = pageObject;
+			this.dispatchEvent(new PageChangeEvent(pageObject));
+		}
 	}
 
 	_resolvePageObject(pageObject) {
