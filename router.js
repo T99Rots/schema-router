@@ -572,11 +572,3 @@ export class Router extends EventTarget {
 		return resolvedRoutes.filter(route => !route.redirect);
 	}
 }
-
-window.original = {};
-
-window.proxyObj = new Proxy(window.original, {
-  set: (obj, key, val) => {
-    console.log(obj, key, val);
-  }
-})
