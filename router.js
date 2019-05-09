@@ -6,8 +6,19 @@ export class Router extends EventTarget {
     }
   }
 
+  static instance = null;
+
   constructor(routerSchema) {
     super();
+    const $this = this;
+
+    // Make sure there won't be more then one instance of Router running
+    // as this will cause interference with other instances 
+    if(this.constructor.instance) {
+      throw new Error('There already is a instance of Router on this page');
+    }
+
+    this.constructor.instance = this;
 
     // validate the router schema to make sure there doesn't show up any
     // unexpected behaviour or errors
@@ -16,25 +27,69 @@ export class Router extends EventTarget {
     this._schema = routerSchema;
     this._activePage = {};
 
-    const clickHandler = e => {
+    document.body.addEventListener('click',  e => {
 
-			const anchor = e.composedPath().find(n => n.tagName === 'A');
+			if (e.defaultPrevented || e.button !== 0 ||
+        e.metaKey || e.ctrlKey || e.shiftKey) return;
+
+      const anchor = e.composedPath().filter(n => n.tagName === 'A')[0];
       
-			if (
-        !anchor 
-				|| anchor.target 
-				|| anchor.hasAttribute('download') 
-				|| anchor.getAttribute('rel') === 'external'
+      if (
+        !anchor
+        || anchor.target
+        || anchor.hasAttribute('download')
+        || anchor.getAttribute('rel') === 'external'
       ) return;
 
-      const pageId = anchor.getAttribute('page-id');
       const href = anchor.href;
+      if (!href || href.indexOf('mailto:') !== -1) return;
 
-      const parseParams = () => {
-        let params = anchor.getAttribute('params');
+      const location = window.location;
+      const origin = location.origin || location.protocol + '//' + location.host;
+      if (href.indexOf(origin) !== 0) return;
 
+      e.preventDefault();
+
+      if(href !== location.href) this.navigate(href);
+    });
+
+    window.addEventListener('popstate', () => {
+      this.navigate(window.location.href);
+    })
+
+    this.navigate(window.location.href);
+
+    this.RouterLink = class extends HTMLAnchorElement {
+
+      static get observedAttributes() {
+        return ['page-id','params'];
+      }
+    
+      constructor() {
+        super();
+        this._params = {};
+        this._resetParamsProxy();
+        this.pageId = this.getAttribute('page-id');
+        this.params = this._parseParams(this.getAttribute('params'));
+      }
+
+      _resetParamsProxy() {
+        if(this._paramsProxy) this._paramsProxy.revoke();
+        this._paramsProxy = Proxy.revocable(this._params, {
+          set: (obj, key, val) => {
+            if(typeof val !== 'string') throw new Error('A parameter must be a string');
+            obj[key] = val;
+            this._scheduleUpdate();
+          }
+        });
+      }
+
+      _parseParams(params) {
         if(params) {
-          params = params
+          try {
+            return JSON.parse(params);
+          } catch {
+            return params
             .split(';')
             .map(a => a.split(':').map(a => a.trim()))
             .reduce((previous, [name, value]) => {
@@ -43,53 +98,82 @@ export class Router extends EventTarget {
                 [name]: value
               }
             },{})
-        }
-        return params || {}
-      }
-
-      if(
-        e.type === 'click'
-        &&!(
-          e.defaultPrevented
-          ||e.button !== 0
-          ||e.metaKey
-          ||e.ctrlKey
-          ||e.shiftKey
-        )
-      ) {
-        if(pageId) {
-          try{
-            this.navigateId(pageId, {params: parseParams(), strict: true});
-            e.preventDefault();          
-          } catch(err) {
-            console.warn(err);
           }
-        } else if(!href || href.indexOf('mailto:') !== -1) {
-          const location = window.location;
-          const origin = location.origin || location.protocol + '//' + location.host;
-          if (href.indexOf(origin) !== 0) return;
-          
-          e.preventDefault();
-          if (href !== location.href) this.navigate(href, {relative: true});
         }
-      } else if(e.button !== 0 && pageId) {
-        try{
-          const pageObject = this.resolveId(pageId, {params: parseParams(), strict: true, page404: true});
-          anchor.href = pageObject.url;
-        } catch(err) {
+      }
+    
+      attributeChangedCallback(name, oldVal, newVal) {
+        if(oldVal === newVal) return;
+        if(name === 'page-id') {
+          this.params = newVal;
+        } else if(name === 'params') {
+          this.params = this._parseParams(newVal);
+        }
+      }
+    
+      _scheduleUpdate() {
+        if(this._updateScheduled) return;
+        this._updateScheduled = true;
+        requestAnimationFrame(() => {
+          this._updateScheduled = false;
+          this._update()
+        });
+      } 
+
+      _update() {
+        if(!this.pageId) return;
+        
+        try {
+          const pageObject = $this.resolveId(this.pageId, {
+            redirect: false,
+            params: this._params || {},
+            page404: true
+          });
+      
+          this.href = pageObject.url;
+        } catch (err){
           console.warn(err);
+        }
+      }
+      
+      get pageId() {
+        return this._pageId;
+      }
+    
+      set pageId(newVal) {
+        if(typeof newVal !== 'string') return;
+        this._pageId = newVal;
+        this._update();
+      }
+    
+      get params() {
+        return this._paramsProxy.proxy;
+      }
+    
+      set params(newVal) {
+        if(typeof newVal !== 'object') return;
+        for(const [key, value] of Object.entries(newVal)) {
+          if(typeof value !== 'string') return;
+          if(key in this._params) {
+            if(value !== this._params[key]) {
+              this._params = newVal;
+              this._resetParamsProxy();
+              this._update();
+              return;
+            }
+          } else {
+            this._params = newVal;
+            this._resetParamsProxy();
+            this._update();
+            return;
+          }
         }
       }
     }
 
-    document.body.addEventListener('click', clickHandler);
-    document.body.addEventListener('mousedown', clickHandler);
-
-    window.addEventListener('popstate', () => {
-      this.navigate(window.location.href);
-    })
-
-    this.navigate(window.location.href);
+    window.customElements.define('router-link', this.RouterLink, { 
+      extends: "a" 
+    });
   }
 
   static validateSchema(schema) {
@@ -437,7 +521,7 @@ export class Router extends EventTarget {
         pageObject = {
           ...this._schema['404'],
           params,
-          url: '/' + (this._schema['404'].path.replace(/(^\/+)?((?<=\/)\/+)?(\/+$)?/g,'') || 'not_found')
+          url: '/' + (this._schema['404'].path? this._schema['404'].path.replace(/(^\/+)?((?<=\/)\/+)?(\/+$)?/g,''): 'not_found')
         };
       } else {
         throw new Error('Can\'t resolve 404 page url in strict mode')
@@ -489,5 +573,10 @@ export class Router extends EventTarget {
 	}
 }
 
-export const defaultTitle = route => route.id ? route.id[0].toUpperCase() + route.id.substr(1) : 'Title not found';
-export const defaultScript = route => route.id ? `${route.id}.js` : false;
+window.original = {};
+
+window.proxyObj = new Proxy(window.original, {
+  set: (obj, key, val) => {
+    console.log(obj, key, val);
+  }
+})
