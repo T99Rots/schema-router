@@ -565,7 +565,11 @@ export class Router extends EventTarget {
       this._resolvePageObject({
         ...this._schema['404'],
         params: {},
-        url: '/' + (this._schema['404'].path.replace(/(^\/+)?((?<=\/)\/+)?(\/+$)?/g,'') || 'not_found')
+        url: '/' + (
+          typeof this._schema['404'].path === 'string'
+          ? this._schema['404'].path.replace(/(^\/+)?((?<=\/)\/+)?(\/+$)?/g,'')
+          : 'not_found'
+        )
       },{redirect: false})
     );
 
