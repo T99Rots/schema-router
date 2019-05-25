@@ -258,15 +258,11 @@ export class Router extends EventTarget {
       }
     }
 
-    if(this._activePage.id !== pageObject.id) {
-      this._activePage = pageObject;
-			this.dispatchEvent(new this.constructor.PageChangeEvent(pageObject)); 
-    }
+    this._activePage = pageObject;
+    this.dispatchEvent(new this.constructor.PageChangeEvent(pageObject)); 
   }
   
   navigateId(id, {params, replace, page404 = true}) {
-    if(this._activePage.id === id) return;
-
     const pageObject = this.resolveId(id, {params, strict: true, page404});
     const newUrl = new URL(pageObject.url, location.origin);
 
