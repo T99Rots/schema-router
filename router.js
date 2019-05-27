@@ -275,15 +275,18 @@ export class Router extends EventTarget {
 	_resolvePageObject(pageObject, {redirect = true} = {}) {
     // if redirect is enabled resolve the redirect argument of the pageObject
     if(redirect && pageObject.redirect) {
+      let redirectLink;
       if(typeof pageObject.redirect === 'function') {
-        redirect = pageObject.redirect();
+        redirectLink = pageObject.redirect();
+      } else {
+        redirectLink = pageObject.redirect;
       }
       if(
-        typeof redirect === 'string'
-        || typeof redirect === 'object'
-        || pageObject.redirect === false
+        typeof redirectLink === 'string'
+        || typeof redirectLink === 'object'
+        || redirectLink === false
       ) {
-        redirect = pageObject.redirect;
+        redirect = redirectLink;
       } else {
         throw new Error(`A redirect function has to return a string, object or false\n@ ${pageObject.id}`);
       }
@@ -563,7 +566,7 @@ export class Router extends EventTarget {
       },{redirect: false})
     );
 
-		return resolvedRoutes.filter(route => !route.redirect);
+    return resolvedRoutes;
 	}
 }
 
