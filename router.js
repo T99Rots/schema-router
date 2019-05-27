@@ -71,7 +71,7 @@ export class Router extends EventTarget {
         this._resetParamsProxy();
         this.pageId = this.getAttribute('page-id');
         this.params = this._parseParams(this.getAttribute('params'));
-        this.id._update();
+        this._update();
       }
 
       _resetParamsProxy() {
