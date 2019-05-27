@@ -71,6 +71,7 @@ export class Router extends EventTarget {
         this._resetParamsProxy();
         this.pageId = this.getAttribute('page-id');
         this.params = this._parseParams(this.getAttribute('params'));
+        this.id._update();
       }
 
       _resetParamsProxy() {
@@ -105,7 +106,7 @@ export class Router extends EventTarget {
       attributeChangedCallback(name, oldVal, newVal) {
         if(oldVal === newVal) return;
         if(name === 'page-id') {
-          this.params = newVal;
+          this.pageId = newVal;
         } else if(name === 'params') {
           this.params = this._parseParams(newVal);
         }
