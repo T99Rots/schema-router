@@ -1,24 +1,17 @@
+let instance;
+
 export class Router extends EventTarget {
-  static PageChangeEvent = class extends Event {
-    constructor(newPage) {
-      super('page-change');
-      this.page = newPage;
-    }
-  }
-
-  static instance = null;
-
   constructor(routerSchema) {
     super();
     const $this = this;
 
     // Make sure there won't be more then one instance of Router running
     // as this will cause interference with other instances 
-    if(this.constructor.instance) {
+    if(instance) {
       throw new Error('There already is a instance of Router on this page');
     }
 
-    this.constructor.instance = this;
+    instance = this;
 
     // validate the router schema to make sure there doesn't show up any
     // unexpected behaviour or errors
@@ -89,7 +82,7 @@ export class Router extends EventTarget {
         if(params) {
           try {
             return JSON.parse(params);
-          } catch {
+          } catch (e) {
             return params
             .split(';')
             .map(a => a.split(':').map(a => a.trim()))
@@ -572,4 +565,11 @@ export class Router extends EventTarget {
 
 		return resolvedRoutes.filter(route => !route.redirect);
 	}
+}
+
+Router.PageChangeEvent = class extends Event {
+  constructor(newPage) {
+    super('page-change');
+    this.page = newPage;
+  }
 }
