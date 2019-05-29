@@ -388,7 +388,7 @@ export class Router extends EventTarget {
 			}
 		}
 
-		const pathname = `/${new URL(path, location.href).pathname.replace(/(^\/+)?((?<=\/)\/+)?(\/+$)?/g,'')}`;
+		const pathname = `/${new URL(path, location.href).pathname.replace(/\/+/g,'/')}`;
 		const pathParts = pathname.split('/').filter(str => str.length>0);
 
 		const findRouteObject = (schemaRoutes, depth = 0, baseParams = {}) => {
@@ -478,7 +478,7 @@ export class Router extends EventTarget {
           const pathParts = path.split('/').filter(str => str.length>0);
 
           for(let i = 0; i < pathParts.length; i++) {
-            pathParts[i] = pathParts[i].replace(/(^\/+)?((?<=\/)\/+)?(\/+$)?/g,'');
+            pathParts[i] = pathParts[i].replace(/\/+/g,'/');
             const match = /^:(\w+)(\(.*\))?$/.exec(pathParts[i]);
 
             if(match) {
@@ -514,7 +514,7 @@ export class Router extends EventTarget {
         pageObject = {
           ...this._schema['404'],
           params,
-          url: '/' + (this._schema['404'].path? this._schema['404'].path.replace(/(^\/+)?((?<=\/)\/+)?(\/+$)?/g,''): 'not_found')
+          url: '/' + (this._schema['404'].path? this._schema['404'].path.replace(/\/+/g,'/'): 'not_found')
         };
       } else {
         throw new Error('Can\'t resolve 404 page url in strict mode')
@@ -535,7 +535,7 @@ export class Router extends EventTarget {
 		const resolveRoutes = (routes, basePath = '') => {
 			const resolvedRoutes = [];
 			for(let [path, route] of Object.entries(routes)) {
-				const currentPath = basePath + `/${path.replace(/(^\/+)?((?<=\/)\/+)?(\/+$)?/g,'')}`;
+				const currentPath = basePath + `/${path.replace(/\/+/g,'/')}`;
 				resolvedRoutes.push(this._resolvePageObject({...route, params: {}, url: currentPath},{redirect: false}));
 				if(route.subRoutes) resolvedRoutes.concat(resolveRoutes(route.subRoutes, currentPath));
 			}
@@ -560,7 +560,7 @@ export class Router extends EventTarget {
         params: {},
         url: '/' + (
           typeof this._schema['404'].path === 'string'
-          ? this._schema['404'].path.replace(/(^\/+)?((?<=\/)\/+)?(\/+$)?/g,'')
+          ? this._schema['404'].path.replace(/\/+/g,'/')
           : 'not_found'
         )
       },{redirect: false})
