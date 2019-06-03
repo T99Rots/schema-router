@@ -1,3 +1,5 @@
+import EventTarget from './node_modules/event-target-shim/dist/event-target-shim.mjs';
+
 let instance;
 
 export class Router extends EventTarget {
@@ -52,7 +54,7 @@ export class Router extends EventTarget {
 
     this.navigate(window.location.href);
 
-    this.RouterLink = class extends HTMLAnchorElement {
+    this.RouterLink = class extends HTMLElement {
 
       static get observedAttributes() {
         return ['page-id','params'];
@@ -60,6 +62,27 @@ export class Router extends EventTarget {
     
       constructor() {
         super();
+        this._anchor = document.createElement('a');
+        this._anchor.appendChild(document.createElement('slot'));
+        const shadow = this.attachShadow({mode: 'open'});
+        const styles = document.createElement('style');
+        styles.innerHTML = /*css*/ `
+          :host {
+            display: inline;
+            text-decoration: underline;
+            color: rgb(0,0,238); 
+          }
+          a {
+            color: inherit;
+            display: inherit;
+            text-decoration: inherit;
+            width: 100%;
+            height: 100%;
+            @apply --anchor-mixin;
+          }
+        `
+        shadow.appendChild(styles);
+        shadow.appendChild(this._anchor);
         this._params = {};
         this._resetParamsProxy();
         this.pageId = this.getAttribute('page-id');
@@ -124,12 +147,16 @@ export class Router extends EventTarget {
             page404: true
           });
       
-          this.href = pageObject.url;
+          this._anchor.href = pageObject.url;
         } catch (err){
           console.warn(err);
         }
       }
       
+      get anchor() {
+        return this._anchor;
+      }
+
       get pageId() {
         return this._pageId;
       }
@@ -165,9 +192,7 @@ export class Router extends EventTarget {
       }
     }
 
-    window.customElements.define('router-link', this.RouterLink, { 
-      extends: "a" 
-    });
+    window.customElements.define('router-link', this.RouterLink);
   }
 
   static validateSchema(schema) {
@@ -240,8 +265,10 @@ export class Router extends EventTarget {
 
     const pageObject = this.resolve(newUrl.href);
   
+    console.log(pageObject);
+
     if(pageObject.redirected) {
-      newUrl = new URL(pageObject.redirect.target, window.location.origin);
+      newUrl = new URL(pageObject.url, window.location.origin);
     }
 
     if(currentLocation !== newUrl.href) {
@@ -315,7 +342,7 @@ export class Router extends EventTarget {
       if('redirectPath' in resolvedObject) {
         resolvedObject.redirectPath = {
           urls: [resolvedObject.redirectPath.urls, pageObject.url],
-          urls: [resolvedObject.redirectPath.ids, pageObject.id]
+          ids: [resolvedObject.redirectPath.ids, pageObject.id]
         }
       } else {
         resolvedObject.redirectPath = {
@@ -388,7 +415,7 @@ export class Router extends EventTarget {
 			}
 		}
 
-		const pathname = `/${new URL(path, location.href).pathname.replace(/\/+/g,'/')}`;
+		const pathname = `${new URL(path, location.href).pathname.replace(/\/+/g,'/')}`;
 		const pathParts = pathname.split('/').filter(str => str.length>0);
 
 		const findRouteObject = (schemaRoutes, depth = 0, baseParams = {}) => {
