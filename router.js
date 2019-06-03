@@ -213,7 +213,7 @@ export class Router extends EventTarget {
       if(!('id' in obj) && id) throw new Error(`id missing from ${type}\n@ ${keyPath}`);
       if('subRoutes' in obj && !subRoutes) throw new Error( `you can\'t use subRoutes in templates, root or 404\n@ ${keyPath}`);
       if('templates' in obj && isTemplate) throw new Error( `you can\'t use templates in templates\n@ ${keyPath}`);
-      if(routeIds.includes(obj.id)) throw new Error( `id "${obj.id}" is used more then once\n@ ${keyPath}`);
+      if(id && routeIds.includes(obj.id)) throw new Error( `id "${obj.id}" is used more then once\n@ ${keyPath}`);
 
       if(obj.redirect) {
         if(['object','string','function'].includes(typeof obj.redirect)) {
@@ -228,7 +228,7 @@ export class Router extends EventTarget {
       const restricted = Object.keys(obj).filter(key => reservedKeywords.includes(key));
       if(restricted.length > 0) throw new Error(`${type} ${obj.id} includes one or multiple restricted keywords: ${restricted.join(', ')}\n@ ${keyPath}`);
       
-      routeIds.push(obj.id);
+      if(id) routeIds.push(obj.id);
     }
 
     // A validation function for RouterSchema.routes
@@ -250,7 +250,7 @@ export class Router extends EventTarget {
     if('root' in schema) validateRoute(schema.root, 'schema.root',{subRoutes: false});
     if('default' in schema) validateRoute(schema.default, 'schema.default',{isTemplate: true, id: false});
     if('routes' in schema) validateRoutes(schema.routes, 'schema.routes');
-    if('templates' in schema) validateRoutes(schema.templates, 'schema.templates',{isTemplate: true});
+    if('templates' in schema) validateRoutes(schema.templates, 'schema.templates',{isTemplate: true, id: false});
   }
 
 	navigate(path, {replace = false, relative = false} = {}) {
