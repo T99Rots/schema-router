@@ -61,21 +61,24 @@ export class Router extends EventTarget {
       constructor() {
         super();
         this._anchor = document.createElement('a');
-        this._anchor.appendChild(document.createElement('slot'));
         const shadow = this.attachShadow({mode: 'open'});
         const styles = document.createElement('style');
+        shadow.appendChild(document.createElement('slot'));
         styles.innerHTML = /*css*/ `
           :host {
             display: inline;
             text-decoration: underline;
             color: rgb(0,0,238); 
+            position: relative;
           }
           a {
-            color: inherit;
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            border-radius: inherit;
             display: inherit;
-            text-decoration: inherit;
-            width: 100%;
-            height: 100%;
             @apply --anchor-mixin;
           }
         `
