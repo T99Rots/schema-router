@@ -1,5 +1,3 @@
-import EventTarget from './node_modules/event-target-shim/dist/event-target-shim.mjs';
-
 let instance;
 
 export class Router extends EventTarget {

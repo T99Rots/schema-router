@@ -6,8 +6,5 @@
   "homepage": "https://github.com/T99Rots/schema-router",
   "keywords": [],
   "author": "",
-  "license": "ISC",
-  "dependencies": {
-    "event-target-shim": "^5.0.1"
-  }
+  "license": "ISC"
 }
