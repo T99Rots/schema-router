@@ -222,15 +222,16 @@ export class Router extends EventTarget {
     const validateRoute = (obj, keyPath, {subRoutes = true, isTemplate = false, id = true} = {}) => {
       const type = isTemplate? 'template': 'route';
       
+      if(typeof obj !== 'object') throw new Error(`A page has to be a object\n@ ${keyPath}`)
       if(!('id' in obj) && id) throw new Error(`id missing from ${type}\n@ ${keyPath}`);
+      if(id && routeIds.includes(obj.id)) throw new Error( `id "${obj.id}" is used more then once\n@ ${keyPath}`);
       if('subRoutes' in obj && !subRoutes) throw new Error( `you can\'t use subRoutes in templates, root or 404\n@ ${keyPath}`);
       if('templates' in obj && isTemplate) throw new Error( `you can\'t use templates in templates\n@ ${keyPath}`);
-      if(id && routeIds.includes(obj.id)) throw new Error( `id "${obj.id}" is used more then once\n@ ${keyPath}`);
 
       if(obj.redirect) {
         if(['object','string','function'].includes(typeof obj.redirect)) {
           if(typeof obj.redirect === 'object' && !('id' in obj.redirect)) {
-            throw new Error(`is is missing from redirect object\n@ ${keyPath}`)
+            throw new Error(`id is missing from redirect object\n@ ${keyPath}`)
           }
         } else {
           throw new Error(`redirect has to be false or typeof Object, String or Function\n@ ${keyPath}`)
@@ -257,6 +258,12 @@ export class Router extends EventTarget {
     // The schema must include 404 route otherwise it won't be able to handle non existing routes
     if(!('404' in schema)) throw new Error('The router schema does not include the "404" attribute');
     if(!('routes' in schema)) throw new Error('The router schema does not include the "routes" attribute');
+
+    if(
+      'basePath' in schema
+      &&typeof schema.basePath !== 'string'
+      &&schema.basePath !== false
+    ) throw new Error('The basePath has to be either a string or false');
 
     validateRoute(schema['404'], 'schema.404', {subRoutes: false});
     if('root' in schema) validateRoute(schema.root, 'schema.root',{subRoutes: false});
