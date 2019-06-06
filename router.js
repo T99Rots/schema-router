@@ -20,6 +20,17 @@ export class Router extends EventTarget {
     this._schema = routerSchema;
     this._activePage = {};
 
+    if(routerSchema.basePath) {
+      this._basePath = new URL(routerSchema.basePath, location.origin).pathname;
+    } else {
+      const baseElement = document.getElementsByTagName('base')[0];
+      if(baseElement) {
+        this._basePath = new URL(baseElement.href).pathname || false;
+      } else {
+        this._basePath = false;
+      }
+    }
+
     document.body.addEventListener('click',  e => {
 
 			if (e.defaultPrevented || e.button !== 0 ||
@@ -333,7 +344,7 @@ export class Router extends EventTarget {
           strict: true
         });
       } else {
-        resolvedObject = this.resolve(redirect);
+        resolvedObject = this.resolve(redirect, {basePathIncluded: false});
       } 
       resolvedObject.redirected = true;
       resolvedObject.redirectOrigin = {
@@ -379,7 +390,7 @@ export class Router extends EventTarget {
 		return resolvedObject;
   }
 
-	resolve(path, {redirect} = {}) {
+	resolve(path, {redirect, basePathIncluded = true} = {}) {
 		const matchPathToSchema = (pathPart, schemaPart) => {
 			const match = /^(:\w+)(\((.+)\))?$/.exec(schemaPart);
 			if(match) {
@@ -416,13 +427,31 @@ export class Router extends EventTarget {
 			}
 		}
 
-		const pathname = `${new URL(path, location.href).pathname.replace(/\/+/g,'/')}`;
-		const pathParts = pathname.split('/').filter(str => str.length>0);
+    const pathToPathParts = path => path.split('/').filter(str => str.length>0);
+
+    let pathname = `${new URL(path, location.href).pathname.replace(/\/+/g,'/')}`;  
+    let pathParts;
+
+    if(this._basePath) {
+      if(basePathIncluded) {
+        const base = this._basePath.replace(/\/[^/]*$/, '');
+        if(pathname.startsWith(base)) {
+          pathParts = pathToPathParts(pathname.slice(base.length));
+        } else {
+          pathParts = pathToPathParts(pathname);
+        }
+      } else {
+        pathParts = pathToPathParts(pathname);
+        pathname = new URL(pathname.replace(/^\//,''), new URL(this._basePath, location.origin)).pathname
+      }
+    } else {
+      pathParts = pathToPathParts(pathname);
+    }
 
 		const findRouteObject = (schemaRoutes, depth = 0, baseParams = {}) => {
 
 			for(const schemaPath in schemaRoutes) {
-				const schemaPathParts = schemaPath.split('/').filter(str => str.length>0);
+				const schemaPathParts = pathToPathParts(schemaPath);
 				let matching = true;
 				let params = {};
 
@@ -520,7 +549,11 @@ export class Router extends EventTarget {
           return '/' + pathParts.join('/');
         }
 
-				if(route.id === id) return {...route, params, url: resolvePath()};
+				if(route.id === id) return {
+          ...route,
+          params,
+          url: this._basePath? new URL(resolvePath().replace(/^\//,''), new URL(this._basePath, location.origin)).pathname: resolvePath()
+        };
 
         if('subRoutes' in route) {
 					const resolvedRoute = findRouteById(route.subRoutes);
@@ -595,7 +628,11 @@ export class Router extends EventTarget {
     );
 
     return resolvedRoutes;
-	}
+  }
+  
+  get basePath () {
+    return this._basePath;
+  }
 }
 
 Router.PageChangeEvent = class extends Event {
