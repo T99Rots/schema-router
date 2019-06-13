@@ -284,8 +284,6 @@ export class Router extends EventTarget {
 
     const pageObject = this.resolve(newUrl.href);
   
-    console.log(pageObject);
-
     if(pageObject.redirected) {
       newUrl = new URL(pageObject.url, window.location.origin);
     }
@@ -556,18 +554,23 @@ export class Router extends EventTarget {
           return '/' + pathParts.join('/');
         }
 
+        const resolvedPath = resolvePath();
+
 				if(route.id === id) return {
           ...route,
           params,
-          url: this._basePath? new URL(resolvePath().replace(/^\//,''), new URL(this._basePath, location.origin)).pathname: resolvePath()
+          url: resolvedPath
         };
 
+        
         if('subRoutes' in route) {
-					const resolvedRoute = findRouteById(route.subRoutes);
+          const resolvedRoute = findRouteById(route.subRoutes);
+          console.log(resolvedPath,resolvedRoute.url)
+          console.log(resolvedPath+resolvedRoute.url);
 					if(resolvedRoute) {
             return {
               ...resolvedRoute,
-              url: resolvePath()+resolvedRoute.url
+              url: resolvedPath+resolvedRoute.url
             }
           };	
 				}
@@ -575,6 +578,10 @@ export class Router extends EventTarget {
 		}
 
     let pageObject = findRouteById(this._schema.routes);
+
+    if(this._basePath) {
+      pageObject.url = new URL(pageObject.url.replace(/^\//,''), new URL(this._basePath, location.origin)).pathname
+    }
 
 		if(this._schema.root && this._schema.root.id === id) pageObject = {...this._schema.root, params, url: '/'};
 		if(this._schema['404'] && (this._schema['404'].id === id || (page404 && !pageObject))) {
