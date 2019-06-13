@@ -543,7 +543,6 @@ export class Router extends EventTarget {
             pathParts[i] = pathParts[i].replace(/\/+/g,'/');
             const match = /^:(\w+)(\(.*\))?$/.exec(pathParts[i]);
 
-            console.log(id, pathParts[i])
             if(match) {
               if(match[1] in params) {
                 pathParts[i] = params[match[1]];
