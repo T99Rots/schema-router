@@ -543,6 +543,7 @@ export class Router extends EventTarget {
             pathParts[i] = pathParts[i].replace(/\/+/g,'/');
             const match = /^:(\w+)(\(.*\))?$/.exec(pathParts[i]);
 
+            console.log(id, pathParts[i])
             if(match) {
               if(match[1] in params) {
                 pathParts[i] = params[match[1]];
@@ -554,13 +555,13 @@ export class Router extends EventTarget {
           return '/' + pathParts.join('/');
         }
 
-        const resolvedPath = resolvePath();
-
-				if(route.id === id) return {
-          ...route,
-          params,
-          url: resolvedPath
-        };
+				if(route.id === id) {
+            return {
+            ...route,
+            params,
+            url: resolvePath()
+          };
+        }
 
         
         if('subRoutes' in route) {
@@ -568,7 +569,7 @@ export class Router extends EventTarget {
 					if(resolvedRoute) {
             return {
               ...resolvedRoute,
-              url: resolvedPath+resolvedRoute.url
+              url: resolvePath()+resolvedRoute.url
             }
           };	
 				}
