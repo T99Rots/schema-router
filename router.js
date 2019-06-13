@@ -577,10 +577,6 @@ export class Router extends EventTarget {
 
     let pageObject = findRouteById(this._schema.routes);
 
-    if(this._basePath) {
-      pageObject.url = new URL(pageObject.url.replace(/^\//,''), new URL(this._basePath, location.origin)).pathname
-    }
-
 		if(this._schema.root && this._schema.root.id === id) pageObject = {...this._schema.root, params, url: '/'};
 		if(this._schema['404'] && (this._schema['404'].id === id || (page404 && !pageObject))) {
       if(!strict || page404) {
@@ -594,6 +590,9 @@ export class Router extends EventTarget {
       }
     }
     if(pageObject) {
+      if(this._basePath) {
+        pageObject.url = new URL(pageObject.url.replace(/^\//,''), new URL(this._basePath, location.origin)).pathname
+      }  
       return this._resolvePageObject(pageObject, {redirect});
     } else {
       throw new Error(`No page with id ${id}`);
