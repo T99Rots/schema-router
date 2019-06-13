@@ -565,8 +565,6 @@ export class Router extends EventTarget {
         
         if('subRoutes' in route) {
           const resolvedRoute = findRouteById(route.subRoutes);
-          console.log(resolvedPath,resolvedRoute.url)
-          console.log(resolvedPath+resolvedRoute.url);
 					if(resolvedRoute) {
             return {
               ...resolvedRoute,
