@@ -300,7 +300,7 @@ export class Router extends EventTarget {
     this.dispatchEvent(new this.constructor.PageChangeEvent(pageObject)); 
   }
   
-  navigateId(id, {params, replace, page404 = true}) {
+  navigateId(id, {params, replace, page404 = true} = {}) {
     const pageObject = this.resolveId(id, {params, strict: true, page404});
     const newUrl = new URL(pageObject.url, location.origin);
 
