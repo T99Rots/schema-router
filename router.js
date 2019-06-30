@@ -321,7 +321,7 @@ export class Router extends EventTarget {
     if(redirect && pageObject.redirect) {
       let redirectLink;
       if(typeof pageObject.redirect === 'function') {
-        redirectLink = pageObject.redirect();
+        redirectLink = pageObject.redirect(pageObject);
       } else {
         redirectLink = pageObject.redirect;
       }
