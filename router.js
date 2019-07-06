@@ -404,7 +404,7 @@ export class Router extends EventTarget {
 					if(regex.test(pathPart)) {
 						return {
 							params: {
-								[match[1].slice(1)]: pathPart
+								[match[1].slice(1)]: decodeURIComponent(pathPart)
 							},
 							match: true
 						}
@@ -412,7 +412,7 @@ export class Router extends EventTarget {
 				} else {
 					return {
 						params: {
-							[match[1].slice(1)]: pathPart
+							[match[1].slice(1)]: decodeURIComponent(pathPart)
 						},
 						match: true
 					}
@@ -551,7 +551,7 @@ export class Router extends EventTarget {
               }
             }
           }
-          return '/' + pathParts.join('/');
+          return '/' + pathParts.map(pathPart => encodeURIComponent(pathPart)).join('/');
         }
 
 				if(route.id === id) {
