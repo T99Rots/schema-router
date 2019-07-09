@@ -408,7 +408,11 @@ export class Router extends EventTarget {
 							},
 							match: true
 						}
-					}
+					} else {
+            return {
+              match: false
+            }
+          }
 				} else {
 					return {
 						params: {
