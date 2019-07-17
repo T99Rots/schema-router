@@ -317,13 +317,28 @@ export class Router extends EventTarget {
   }
 
 	_resolvePageObject(pageObject, {redirect = true} = {}) {
-    // if redirect is enabled resolve the redirect argument of the pageObject
-    if(redirect && pageObject.redirect) {
+    //apply all templates to a copy of the pageObject 
+    const resolvedObject = {...pageObject};
+		const applyTemplate = (template) => {
+			for(let [property, value] of Object.entries(template)) {
+				if (!(property in resolvedObject)) resolvedObject[property] = value;
+			}
+		}
+		if(typeof pageObject.template == 'string') {
+			if(pageObject.template in this._schema.templates) {
+				applyTemplate(this._schema.templates[pageObject.template])
+			}
+		}
+		applyTemplate(this._schema.default);
+
+    // if redirect is enabled resolve the redirect argument of the resolvedObject
+    if(redirect && resolvedObject.redirect) {
       let redirectLink;
-      if(typeof pageObject.redirect === 'function') {
-        redirectLink = pageObject.redirect(pageObject);
+      if(typeof resolvedObject.redirect === 'function') {
+        redirectLink = resolvedObject.redirect(pageObject);
+        resolvedObject.redirect = redirectLink;
       } else {
-        redirectLink = pageObject.redirect;
+        redirectLink = resolvedObject.redirect;
       }
       if(
         typeof redirectLink === 'string'
@@ -332,7 +347,7 @@ export class Router extends EventTarget {
       ) {
         redirect = redirectLink;
       } else {
-        throw new Error(`A redirect function has to return a string, object or false\n@ ${pageObject.id}`);
+        throw new Error(`A redirect function has to return a string, object or false\n@ ${resolvedObject.id}`);
       }
     } else {
       redirect = false;
@@ -370,18 +385,7 @@ export class Router extends EventTarget {
       return resolvedObject;
     }
     
-		const resolvedObject = {...pageObject};
-		const applyTemplate = (template) => {
-			for(let [property, value] of Object.entries(template)) {
-				if (!(property in resolvedObject)) resolvedObject[property] = value;
-			}
-		}
-		if(typeof pageObject.template == 'string') {
-			if(pageObject.template in this._schema.templates) {
-				applyTemplate(this._schema.templates[pageObject.template])
-			}
-		}
-		applyTemplate(this._schema.default);
+    // resolve the value of all router function properties
 		for(let [property, value] of Object.entries(resolvedObject)) {
 			if(typeof value === 'function') {
 				const resolvedValue = value(pageObject);
