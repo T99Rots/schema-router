@@ -214,7 +214,9 @@ export class Router extends EventTarget {
       'url',
       'redirected',
       'redirectOrigin',
-      'redirectPath'
+      'redirectPath',
+      'depth',
+      'parentId'
     ]
 
     // validate a route object to make sure it isn't missing any required properties 
@@ -461,7 +463,7 @@ export class Router extends EventTarget {
       pathParts = pathToPathParts(pathname);
     }
 
-		const findRouteObject = (schemaRoutes, depth = 0, baseParams = {}) => {
+		const findRouteObject = (schemaRoutes, depth = 0, baseParams = {}, parentId = null) => {
 
 			for(const schemaPath in schemaRoutes) {
 				const schemaPathParts = pathToPathParts(schemaPath);
@@ -489,8 +491,11 @@ export class Router extends EventTarget {
 
 				if(matching) {
 					if(pathParts.length === schemaPathParts.length + depth) {
+            console.log(parentId, depth);
 						return this._resolvePageObject({
-							...schemaRoutes[schemaPath],
+              ...schemaRoutes[schemaPath],
+              depth,
+              parentId,
 							params: {
 								...params,
 								...baseParams
@@ -505,7 +510,8 @@ export class Router extends EventTarget {
 							{
 								...baseParams,
 								...params
-							}
+              },
+              schemaRoutes[schemaPath].id
 						)
 						if(resolvedPageObject) {
 							return resolvedPageObject;
@@ -519,7 +525,13 @@ export class Router extends EventTarget {
 
 		if(pathParts.length < 1) {
 			if('root' in this._schema) {
-				pageObject = this._resolvePageObject({...this._schema.root, params: {}, url: '/'}, {redirect});
+				pageObject = this._resolvePageObject({
+          ...this._schema.root,
+          params: {},
+          url: '/',
+          depth: 0,
+          parentId: null
+        }, {redirect});
 			}
 		} else {
 			if('routes' in this._schema) {
@@ -531,7 +543,13 @@ export class Router extends EventTarget {
 
 		if(!pageObject) {
 			if('404' in this._schema) {
-				pageObject = this._resolvePageObject({...this._schema['404'],params: {}, url: pathname}, {redirect});				
+				pageObject = this._resolvePageObject({
+          ...this._schema['404'],
+          params: {},
+          url: pathname,
+          parentId: null,
+          depth: 0
+        }, {redirect});				
 			} else {
 				throw new Error('routeSchema must have a 404 route');
 			}
@@ -540,7 +558,7 @@ export class Router extends EventTarget {
 	}
 
 	resolveId(id, {params = {}, strict = false, redirect, page404 = false} = {}) {
-		const findRouteById = (routes) => {
+		const findRouteById = (routes, depth = 0, parentId = null) => {
 			for(let [path, route] of Object.entries(routes)) {
 
         // resolving variable path parameters
@@ -563,16 +581,18 @@ export class Router extends EventTarget {
         }
 
 				if(route.id === id) {
-            return {
+          return {
             ...route,
             params,
+            depth,
+            parentId,
             url: resolvePath()
           };
         }
 
         
         if('subRoutes' in route) {
-          const resolvedRoute = findRouteById(route.subRoutes);
+          const resolvedRoute = findRouteById(route.subRoutes, depth + 1, route.id);
 					if(resolvedRoute) {
             return {
               ...resolvedRoute,
@@ -585,11 +605,19 @@ export class Router extends EventTarget {
 
     let pageObject = findRouteById(this._schema.routes);
 
-		if(this._schema.root && this._schema.root.id === id) pageObject = {...this._schema.root, params, url: '/'};
+		if(this._schema.root && this._schema.root.id === id) pageObject = {
+      ...this._schema.root,
+      depth: 0,
+      parentId: null,
+      params,
+      url: '/'
+    };
 		if(this._schema['404'] && (this._schema['404'].id === id || (page404 && !pageObject))) {
       if(!strict || page404) {
         pageObject = {
           ...this._schema['404'],
+          depth: 0,
+          parentId: null,
           params,
           url: '/' + (this._schema['404'].path? this._schema['404'].path.replace(/\/+/g,'/'): 'not_found')
         };
@@ -612,12 +640,18 @@ export class Router extends EventTarget {
 	}
 
 	resolveAll() {
-		const resolveRoutes = (routes, basePath = '') => {
+		const resolveRoutes = (routes, basePath = '', depth = 0, parentId = null) => {
 			const resolvedRoutes = [];
 			for(let [path, route] of Object.entries(routes)) {
 				const currentPath = basePath + `/${path.replace(/\/+/g,'/')}`;
-				resolvedRoutes.push(this._resolvePageObject({...route, params: {}, url: currentPath},{redirect: false}));
-				if(route.subRoutes) resolvedRoutes.concat(resolveRoutes(route.subRoutes, currentPath));
+				resolvedRoutes.push(this._resolvePageObject({
+          ...route,
+          params: {},
+          url: currentPath,
+          depth,
+          parentId
+        },{redirect: false}));
+				if(route.subRoutes) resolvedRoutes.push(...resolveRoutes(route.subRoutes, currentPath, depth + 1, route.id));
 			}
 			return resolvedRoutes;
 		}
@@ -631,7 +665,13 @@ export class Router extends EventTarget {
 		}
 
 		if('root' in this._schema) resolvedRoutes.push(
-      this._resolvePageObject({...this._schema.root, params: {}, route: '/'},{redirect: false})
+      this._resolvePageObject({
+        ...this._schema.root,
+        params: {},
+        route: '/',
+        parentId: null,
+        depth: 0
+      },{redirect: false})
     );
 
 		if('404' in this._schema) resolvedRoutes.push(
@@ -642,7 +682,9 @@ export class Router extends EventTarget {
           typeof this._schema['404'].path === 'string'
           ? this._schema['404'].path.replace(/\/+/g,'/')
           : 'not_found'
-        )
+        ),
+        depth: 0,
+        parentId: null
       },{redirect: false})
     );
 
