@@ -491,7 +491,6 @@ export class Router extends EventTarget {
 
 				if(matching) {
 					if(pathParts.length === schemaPathParts.length + depth) {
-            console.log(parentId, depth);
 						return this._resolvePageObject({
               ...schemaRoutes[schemaPath],
               depth,
