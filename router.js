@@ -375,8 +375,8 @@ export class Router extends EventTarget {
       }
       if('redirectPath' in resolvedObject) {
         resolvedObject.redirectPath = {
-          urls: [resolvedObject.redirectPath.urls, pageObject.url],
-          ids: [resolvedObject.redirectPath.ids, pageObject.id]
+          urls: [...resolvedObject.redirectPath.urls, pageObject.url],
+          ids: [...resolvedObject.redirectPath.ids, pageObject.id]
         }
       } else {
         resolvedObject.redirectPath = {
