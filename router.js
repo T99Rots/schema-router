@@ -603,7 +603,7 @@ export class Router extends EventTarget {
             const searchParamsObj = new URLSearchParams();
 
             for(const [key, value] of Object.entries(searchParams)) {
-              searchParamsObj.set(key, value);
+              if(value !== undefined && value !== null) searchParamsObj.set(key, value);
             }
 
             finalRoute.url+= `?${searchParamsObj.toString()}`
@@ -657,7 +657,33 @@ export class Router extends EventTarget {
     } else {
       throw new Error(`No page with id ${id}`);
     }
-	}
+  }
+  
+  setSearchParams (searchParams, {
+    replace,
+    page404 = true
+  } = {}) {
+    if(typeof searchParams !== 'object') return;
+    const searchEntries = Object.entries(searchParams);
+    if(Object.keys(this._activePage.searchParams).length === searchEntries.length) {
+      const index = searchEntries.findIndex(([key, val]) => this._activePage.searchParams[key] !== val);
+      if(index === -1) return;
+    }
+
+    this.navigateId(this._activePage.id, {
+      params: this._activePage.params,
+      replace,
+      page404,
+      searchParams
+    })
+  }
+
+  updateSearchParams (searchParams = {}, options) {
+    this.setSearchParams({
+      ...this._activePage.searchParams,
+      ...searchParams
+    }, options);
+  }
 
 	get activePage () {
 		return this._activePage;
