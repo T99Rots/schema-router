@@ -302,8 +302,8 @@ export class Router extends EventTarget {
     this.dispatchEvent(new this.constructor.PageChangeEvent(pageObject)); 
   }
   
-  navigateId(id, {params, replace, page404 = true} = {}) {
-    const pageObject = this.resolveId(id, {params, strict: true, page404});
+  navigateId(id, {params, replace, page404 = true, searchParams} = {}) {
+    const pageObject = this.resolveId(id, {params, strict: true, page404, searchParams});
     const newUrl = new URL(pageObject.url, location.origin);
 
     if(window.location.href !== newUrl.href) {
@@ -444,8 +444,14 @@ export class Router extends EventTarget {
 
     const pathToPathParts = path => path.split('/').filter(str => str.length>0);
 
-    let pathname = `${new URL(path, location.href).pathname.replace(/\/+/g,'/')}`;  
+    const url = new URL(path, location.href);
+    let pathname = `${url.pathname.replace(/\/+/g,'/')}`;
     let pathParts;
+    let searchParams = {};
+
+    url.searchParams.forEach((value, key) => {
+      searchParams[key] = value;
+    })
 
     if(this._basePath) {
       if(basePathIncluded) {
@@ -499,6 +505,7 @@ export class Router extends EventTarget {
 								...params,
 								...baseParams
               },
+              searchParams,
               url: pathname
 						}, {redirect})
 					}
@@ -527,6 +534,7 @@ export class Router extends EventTarget {
 				pageObject = this._resolvePageObject({
           ...this._schema.root,
           params: {},
+          searchParams,
           url: '/',
           depth: 0,
           parentId: null
@@ -545,6 +553,7 @@ export class Router extends EventTarget {
 				pageObject = this._resolvePageObject({
           ...this._schema['404'],
           params: {},
+          searchParams: {},
           url: pathname,
           parentId: null,
           depth: 0
@@ -556,7 +565,7 @@ export class Router extends EventTarget {
 		return pageObject;
 	}
 
-	resolveId(id, {params = {}, strict = false, redirect, page404 = false} = {}) {
+	resolveId(id, {params = {}, strict = false, redirect, page404 = false, searchParams} = {}) {
 		const findRouteById = (routes, depth = 0, parentId = null) => {
 			for(let [path, route] of Object.entries(routes)) {
 
@@ -580,13 +589,26 @@ export class Router extends EventTarget {
         }
 
 				if(route.id === id) {
-          return {
+          const finalRoute = {
             ...route,
             params,
             depth,
             parentId,
-            url: resolvePath()
+            url: resolvePath(),
+            searchParams: {...searchParams}
           };
+
+          if(searchParams) {
+            const searchParamsObj = new URLSearchParams();
+
+            for(const [key, value] of Object.entries(searchParams)) {
+              searchParamsObj.set(key, value);
+            }
+
+            finalRoute.url+= `?${searchParamsObj.toString()}`
+          }
+
+          return finalRoute;
         }
 
         
@@ -609,6 +631,7 @@ export class Router extends EventTarget {
       depth: 0,
       parentId: null,
       params,
+      searchParams: {},
       url: '/'
     };
 		if(this._schema['404'] && (this._schema['404'].id === id || (page404 && !pageObject))) {
@@ -618,6 +641,7 @@ export class Router extends EventTarget {
           depth: 0,
           parentId: null,
           params,
+          searchParams: {},
           url: '/' + (this._schema['404'].path? this._schema['404'].path.replace(/\/+/g,'/'): 'not_found')
         };
       } else {
@@ -646,6 +670,7 @@ export class Router extends EventTarget {
 				resolvedRoutes.push(this._resolvePageObject({
           ...route,
           params: {},
+          searchParams: {},
           url: currentPath,
           depth,
           parentId
@@ -667,6 +692,7 @@ export class Router extends EventTarget {
       this._resolvePageObject({
         ...this._schema.root,
         params: {},
+        searchParams: {},
         route: '/',
         parentId: null,
         depth: 0
@@ -677,6 +703,7 @@ export class Router extends EventTarget {
       this._resolvePageObject({
         ...this._schema['404'],
         params: {},
+        searchParams: {},
         url: '/' + (
           typeof this._schema['404'].path === 'string'
           ? this._schema['404'].path.replace(/\/+/g,'/')
