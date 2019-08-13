@@ -216,7 +216,8 @@ export class Router extends EventTarget {
       'redirectOrigin',
       'redirectPath',
       'depth',
-      'parentId'
+      'parentId',
+      'searchParams'
     ]
 
     // validate a route object to make sure it isn't missing any required properties 
